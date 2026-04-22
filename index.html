@@ -249,9 +249,9 @@ body::before {
       🚀 편집 CMS 열기
     </a>
     <div style="margin-top:8px;">
-      <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(34,197,94,0.12);color:#16A34A;">
-        <span style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></span>
-        LIVE
+      <span id="editor-status" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(34,197,94,0.12);color:#16A34A;">
+        <span id="editor-status-dot" style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></span>
+        <span id="editor-status-text">LIVE</span>
       </span>
     </div>
   </div>
@@ -349,5 +349,49 @@ body::before {
   </div>
 
 </div>
+
+<script>
+// ── TTimes Editor 워커 헬스체크 → LIVE 배지 동기화 ──
+(function() {
+  const HEALTH_URL = "https://alleditor.ttimes6000.workers.dev/health";
+  const TIMEOUT_MS = 5000;
+  const RECHECK_INTERVAL_MS = 60000; // 60초마다 재확인
+
+  const statusEl = document.getElementById("editor-status");
+  const dotEl = document.getElementById("editor-status-dot");
+  const textEl = document.getElementById("editor-status-text");
+  if (!statusEl || !dotEl || !textEl) return;
+
+  function setLive() {
+    statusEl.style.background = "rgba(34,197,94,0.12)";
+    statusEl.style.color = "#16A34A";
+    dotEl.style.background = "#16A34A";
+    textEl.textContent = "LIVE";
+  }
+  function setDown() {
+    statusEl.style.background = "rgba(220,38,38,0.12)";
+    statusEl.style.color = "#DC2626";
+    dotEl.style.background = "#DC2626";
+    textEl.textContent = "CLOSE — 개발자 문의";
+  }
+
+  async function check() {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+      const res = await fetch(HEALTH_URL, { signal: ctrl.signal, cache: "no-store" });
+      clearTimeout(t);
+      const data = res.ok ? await res.json() : null;
+      if (data && data.ok) setLive();
+      else setDown();
+    } catch (e) {
+      setDown();
+    }
+  }
+
+  check();
+  setInterval(check, RECHECK_INTERVAL_MS);
+})();
+</script>
 </body>
 </html>
